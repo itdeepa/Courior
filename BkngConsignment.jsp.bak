@@ -1,0 +1,245 @@
+<%@ include file = "/common/Include.jsp"  %>  
+<%@ page import="easycbs.courior.actionform.BkngConsForm "%>
+<% String sMode="Opr";
+String branEname=loginSessionObj.getsBrnEname();
+%>
+<html>
+	<head>
+		<script >
+			 var gCalDate=changeDate('<%= bancDate.toString() %>');
+			 var gdate=changeDateFormat('<%= bancDate.toString() %>');
+		 </script>
+		 <script>
+			function showhide(di)
+			{	
+				var divs = di;
+				if(divs == "letterDateNew")
+				{
+					var sty = cal_consDate_display.style.display;
+					if(sty == "none"){
+						cal_consDate_display.style.display = "block";
+						cal_consDate_display_year.style.display = "block";	
+					}
+				else{
+					cal_consDate_display.style.display = "none";
+					cal_consDate_display_year.style.display = "none";
+					}
+				}
+			}
+			
+			function saveBknConsDetail(){
+
+				var doc=document.getElementById("Doc").checked;
+				var nonDoc=document.getElementById("NonDoc").checked;
+
+				if(trim(doc)=="true")	
+					 document.getElementById("docTypeValue").value="Doc";
+				 else if(trim(nonDoc)=="true")
+						 document.getElementById("docTypeValue").value="NonDoc";
+				
+				if(trim(document.getElementById("brnCode").value)=="")
+				 {
+				 alert('Please enter branch');
+				 document.getElementById("brnCode").focus;
+				 return false;
+				 }
+				 else if(trim(document.getElementById("consNo").value)==""){
+					alert('Enter valid consignment Number');
+					document.getElementById("consNo").focus;
+					return false;
+				 }
+				  else if(trim(document.getElementById("destinationBr").value)==""){
+					alert('Please enter destination branch');
+					document.getElementById("destinationBr").focus;
+					return false;
+				 }
+				 else if(trim(document.getElementById("destination").value)==""){
+					alert('Please enter address');
+					document.getElementById("destination").focus;
+					return false;
+				 }
+
+				  else if(trim(document.getElementById("weight").value)==0.0){
+					alert('Please enter weight');
+					document.getElementById("weight").focus;
+					return false;
+				 }
+
+				  else if(trim(document.getElementById("dimension").value)==""){
+					alert('Please enter dimension');
+					document.getElementById("dimension").focus;
+					return false;
+				 }
+
+				/* else if(dateComparison("sletterDt",gdate))
+				 {
+					 alert("<bean:message bundle='<%= errorLang %>' key= '1648'/>");
+					 return false;
+				 }*/
+				
+				 else {
+
+					  document.forms[0].action=appcontext +"/Courior/BkngConsAction.do?action=SaveBkngConsignment";	
+					  document.forms[0].method="post";
+					  document.forms[0].submit();
+					  document.getElementById("saveButton").disabled = true;
+					  document.getElementById("cancel").disabled = true;
+				 } 
+
+				
+			}
+			function gotomenu()
+			{
+				document.forms[0].action = appcontext +"/menu/FormOpen.do?from=cancel";
+				document.forms[0].method="post";
+				document.forms[0].submit();
+			}
+
+
+	</script>
+	</head>
+	<body>
+		<div align="center">
+			<label id = "title" style = "font-weight:bold; font-size:15; color:#660000;">	
+				Booking Of Consignment <br><br>
+			</label>
+		</div>
+		
+		<html:form action="/Courior/BkngConsAction" >
+		<html:hidden  property="docTypeValue" styleId="docTypeValue" />
+		<html:hidden property="destinationBrKid"styleId="destinationBrKid"/>
+       <table width="150%" border="0" cellspacing="0" cellpadding="0" align="center" style="width:550px; margin:0 auto;">
+		
+	   <HR>
+		 <tr>
+			<td ><label>Branch <font size="2" color='<%=errorColor%>'>*</font></label> </td>
+			<td><b>&nbsp;:&nbsp;</b><html:text property="brnCode" styleId="brnCode" readonly="true"  size="10" value="<%=branchCode%>" tabindex='1'/>
+			<html:text property="brnLabel"  styleId="brnLabel" size="30" value="<%=branEname%>" readonly="true" tabindex ="-1" styleClass="LabelText"/></td>
+		</tr>
+		
+		 <tr><td>
+		 Consignment Date</td>
+		 <td><b>&nbsp;:</b>
+		 <html:text  property="consDate" styleId="consDate" size="12" readonly="true" tabindex=""/>
+			<!-- Calender -->			 
+			<input type="button"  name="letterDateButton" onClick="showhide('letterDateNew')"  tabindex="4"
+						style="background-image: url('<%=request.getContextPath()%>/images/Calendar.gif');width:20px;height:15px"
+						/>			
+			<div id="cal_consDate_display_year" 
+					style="display:none;position:absolute;top:100px;left:650px;">
+					<input  type="text"	id="consDate_year"size="5"maxlength="4"/>
+			</div>	
+			<%
+			if (sMode.equalsIgnoreCase("Auth")) {%>
+			
+			<%}else {%>	
+			<div id="cal_consDate_display"
+					 style="display:none;position:absolute;top:100px;left:950px;">				
+					 <script
+					 type="text/javascript">						
+						letterDateNew = new Calendar ("letterDateNew","consDate",new Date(gCalDate));
+						renderCalendar (letterDateNew);						
+					</script>
+			</div>
+			<%}%>		
+		 </td>	
+		</tr>
+		
+		 <tr>
+			<td ><label>Consignment No <font size="2" color='<%=errorColor%>'>*</font></label> </td>
+			<td><b>&nbsp;:&nbsp;</b><html:text property="consNo" styleId="consNo"  size="20"  onchange="" maxlength="100" tabindex='1'/></td>
+		</tr>
+
+		 <tr> 
+		<td><label>Destination Branch</label> <font size="2" color='<%=errorColor%>'>*</font></td>
+		<td><b>:&nbsp;</b>
+		<html:text  property="destinationBr" styleId="destinationBr" tabindex="90" size="10"  maxlength="10" onkeypress="alphaNumWithoutSpace()"  
+			onblur="getRespectiveValues(destinationBr,'destinationBr','destinationBrLabel','destinationBr',this.value)"
+			onkeydown="callMasterHelp('destinationBr')"/>
+			<img src="<%=request.getContextPath()%>/images/HELP1.BMP"   class="Image" onClick="openHelpPanel('destinationBr', 'destinationBrKid', 'destinationBrLabel','CBSBranchMaster')"> 
+			 <html:text property="destinationBrLabel" styleId="destinationBrLabel" readonly="true"  size="25" style ="background-color:activeborder;border:0px" tabindex="-1"/></td>
+
+
+			
+
+
+
+
+	     </tr>
+
+		 <tr>
+			<td ><label>Address <font size="2" color='<%=errorColor%>'>*</font></label> </td>
+			<td><b>&nbsp;&nbsp</b>
+			<textarea name="destination" rows="2" cols="30"  property="destination" styleId="destination"></textarea>
+			</td>
+		</tr>
+
+		 <tr>
+			<td ><label>Weight <font size="2" color='<%=errorColor%>'>*</font></label> </td>
+			<td><b>&nbsp;:&nbsp;</b><html:text property="weight" styleId="weight"  size="20"  onchange="" maxlength="100" tabindex='1'/></td>
+		</tr>
+
+		 <tr>
+			<td ><label>Dimensions <font size="2" color='<%=errorColor%>'>*</font></label> </td>
+			<td><b>&nbsp;:&nbsp;</b><html:text property="dimension" styleId="dimension"  size="20"  onchange="" maxlength="100" tabindex='1'/></td>
+		</tr>
+
+		 <tr>
+			<td ><label>Document Type <font size="2" color='<%=errorColor%>'>*</font></label> </td>
+			<td><b>&nbsp;:&nbsp;</b>
+				<input type="radio" name="docType" id="Doc" checked="checked" />
+				<label  for="Doc">Document</label>
+			
+				<input type="radio" name="docType"  id="NonDoc" />
+				<label  for="NonDoc">Non Document</label>
+			</td>
+		 </tr>
+
+		 
+		
+		</table>
+		
+		<table width="70%" border="0" cellspacing="0" cellpadding="0" align="center">
+		<tr>
+			<td  align="center" colspan="2">
+			
+			<tr>
+			<tr>
+			<td></td>
+		</tr>
+	    </table>
+
+		<table width="70%" border="0" cellspacing="0" cellpadding="0" align="center">
+		<tr>
+		<td  align="center" colspan="2">
+		<HR>
+		<input type="button" name="saveButton" id="saveButton"  value="<bean:message bundle='<%=lang%>' key='496'/>"  onclick ="saveBknConsDetail()" tabIndex='4'>
+		<input type="button" name="cancel" id="cancel" value="<bean:message bundle='<%=lang%>' key='87'/>" style="width:100px" onclick="gotomenu()" tabindex='5'>
+		<input type="button" name="cancel" id="cancel" value="<bean:message bundle='<%=lang%>' key='33'/>" style="width:100px"  tabindex='6'>
+
+		</td>
+		</tr>
+		</table>
+
+
+	
+
+
+
+
+		<table align="center">
+		<DIV id = "Div" style = "display:block;">
+		<script>
+				var ind = 0;
+				<html:messages id = "Errors" property = "ccNo" bundle='<%=errorLang%>'>
+					errorArrayValue[ind] = "accNo";
+					errorArrayText[ind] = '<bean:write name = "Errors" />';
+					ind = ind + 1;
+				</html:messages>
+				showErrorTab();
+		</script>
+		</DIV>
+		</table>
+	</html:form>
+	</body>
+</html>
