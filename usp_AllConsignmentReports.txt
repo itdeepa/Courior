@@ -1,0 +1,18 @@
+CREATE proc usp_AllConsignmentReports(    
+@FromDate DATETIME,    
+@ToDate DATETIME,    
+@Code VARCHAR(10)    
+)    
+AS     
+BEGIN    
+--- usp_AllConsignmentReports '2014/02/01','2014/12/01','002'    
+ select BookingCons_BrnCode ,BookingCons_ConsNo,(select brn_ename from s_brn where brn_brcod=BookingCons_BrnCode)fromBran ,    
+       (select brn_ename from s_brn where brn_brcod=BookingCons_DestBrn)toBran,    
+       BookingCons_BookingDate  ,BookingCons_Destination ,BookingCons_Weight ,CASE WHEN BookingCons_Status='C' THEN 'COMPLETE' WHEN BookingCons_Status='R' THEN 'RETURNED' ELSE 'IN PROCESS' END                                                   
+       BookingCons_Dimensions ,BookingCons_DestBrn    
+       from s_bookingcons     
+       where BookingCons_BookingDate BETWEEN @FromDate and @ToDate AND    
+       ( BookingCons_BrnCode=@Code OR @Code='0000')    
+            
+    
+END     }

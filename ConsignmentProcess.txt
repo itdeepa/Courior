@@ -1,0 +1,201 @@
+ /*                            
+                             
+ ConsignmentProcess '4','' ,'' ,'' ,'' , '004','' ,'' ,'' ,'' , 'INCOMING',0                          
+ select * from s_TrackStatus                           
+                             
+ */                                                  
+CREATE PROCEDURE [dbo].[ConsignmentProcess]                                                     
+(                                                    
+ @Mode      CHAR(1),                                                          
+ @BookingCons_BrnID   VARCHAR(50) ='',                                                    
+ @BookingCons_BrnCode  VARCHAR(50) = '',                                                    
+ @BookingCons_BookingDate DATETIME  = '1900-01-01',                                                    
+ @BookingCons_ConsNo  VARCHAR(50)   = '',                                
+ @BookingCons_DestBrn  VARCHAR(50)   = '',                                                  
+ @BookingCons_Destination VARCHAR(200)   = '',                                                    
+ @BookingCons_Weight  VARCHAR(20) ='',                                                    
+ @BookingCons_DocType  CHAR   = 'Y',                                                    
+ @BookingCons_Dimensions VARCHAR(20)     = '',                                                    
+ @BookingCons_Status  varchar(30)     = 'P'   ,                          
+ @UserID     NUMERIC(10)=0                                                 
+                                                     
+)                                                    
+AS                                                    
+BEGIN                                                    
+ SET NOCOUNT ON;                                                    
+                                                     
+                                                   
+ IF @Mode='0'  --INSERT INTO BOOKING CONS                                                    
+ BEGIN                                                    
+  BEGIN TRY                                                    
+  BEGIN TRANSACTION                                                    
+                                                       
+   INSERT INTO s_bookingcons (BookingCons_BrnID,BookingCons_BrnCode,BookingCons_BookingDate,                                                    
+    BookingCons_ConsNo,BookingCons_DestBrn,BookingCons_Destination,BookingCons_Weight,BookingCons_DocType,                                                    
+    BookingCons_Dimensions,BookingCons_Status,BookingCons_UserId)                                                    
+   VALUES(                                                                      
+     @BookingCons_BrnID                                                                  
+     ,@BookingCons_BrnCode                                                       
+     ,@BookingCons_BookingDate                                                      
+     ,@BookingCons_ConsNo                              
+     ,@BookingCons_DestBrn                                                        
+     ,@BookingCons_Destination                                                      
+     ,@BookingCons_Weight                                                        
+     ,@BookingCons_DocType                                                     
+     ,@BookingCons_Dimensions                                                       
+     ,@BookingCons_Status,                          
+   @UserID)                                                    
+                                                       
+   SELECT 1,'Consignment details saved successfully'                                                    
+  COMMIT TRANSACTION                                                    
+  END TRY                                                    
+                                                      
+  BEGIN CATCH                                                    
+  SELECT 2,'Something went wrong, Please try again'                                                    
+  ROLLBACK TRANSACTION                                         
+  END CATCH                                                    
+                                         
+                                                     
+ END                           
+ ELSE IF @Mode='1' --FETCH FORWARD CONSIGNMENT DETAIL                                                   
+ BEGIN                                                  
+  select BookingCons_BrnID,BookingCons_BrnCode,Convert(varchar(10),BookingCons_BookingDate,103)BookingCons_BookingDate,                                                    
+  BookingCons_ConsNo,BookingCons_Destination,BookingCons_Weight,                              
+  CASE WHEN BookingCons_DocType = 'Y' THEN 'DOC' ELSE 'NON-DOC' END as  DocType,                                                  
+  BookingCons_Dimensions,(select brn_ename+' ('+brn_brcod+')' from s_brn where BookingCons_DestBrn=brn_brcod) from s_bookingcons where BookingCons_ConsNo=@BookingCons_ConsNo  
+  and BookingCons_Status='P'                                                  
+                                              
+                                                    
+  END                                                   
+                                                       
+ ELSE IF @Mode='2' -- SAVE FORWARD AND ARRIVE DETAILS                                    
+ BEGIN                                    
+ IF @BookingCons_Status='F'                                  
+ BEGIN                          
+ IF EXISTS( SELECT TrackBookingCons_kid FROM S_TRACKBOOKINGCONS WHERE TrackBookingCons_Status = 'F' AND TrackBookingCons_ConsNo =@BookingCons_ConsNo)                                                   
+  BEGIN                                   
+    SELECT 2,'Consignment Already Forwarded'                                                   
+                                             
+ END                                     
+ ELSE                                  
+ BEGIN                                
+                           
+     INSERT INTO S_TRACKBOOKINGCONS(TrackBookingCons_ConsNo,TrackBookingCons_BrnCode,TrackBookingCons_FwdBrnCode,                                            
+                 TrackBookingCons_Date,TrackBookingCons_Status,TrackBookingCons_UserId)                                     
+     VALUES                                        
+     (@BookingCons_ConsNo                                        
+     ,@BookingCons_BrnCode                                        
+     ,@BookingCons_BrnID                                        
+     ,GETDATE()                                        
+     ,@BookingCons_Status,                          
+      @UserID)                                
+                               
+                                 
+     INSERT INTO s_TrackHist ( TrackHist_ConsID,  TrackHist_BranchID,TrackHist_StatusID,TrackHist_Date,TrackHist_UserID)                                   
+     SELECT BookingCons_kid,@BookingCons_BrnCode,3, GETDATE() ,@UserID                          
+     FROM s_BookingCons                          
+     WHERE BookingCons_ConsNo =@BookingCons_ConsNo                             
+                               
+    --sjat 002                          
+    --SU-0000                          
+    --AUTH1  006 420                          
+    --AUTH2  004 456                          
+                              
+                              
+    --select * from s_TrackHist                          
+                              
+    --SELECT * FROM S_TRACKBOOKINGCONS                          
+                              
+                              
+                           
+                                     
+      SELECT 1,'Consignment Forward details saved successfully'                                     
+  END                                      
+ END                                  
+  ELSE IF @BookingCons_Status='A'                                    BEGIN  
+  Declare @flag char(1)  
+  SET @flag=(SELECT TrackBookingCons_Status FROM S_TRACKBOOKINGCONS WHERE TrackBookingCons_ConsNo =@BookingCons_ConsNo AND TrackBookingCons_kid=(SELECT max(TrackBookingCons_kid) FROM S_TRACKBOOKINGCONS WHERE TrackBookingCons_ConsNo =@BookingCons_ConsNo)) 
+                                
+ IF @flag='A'                                                  
+  BEGIN                         
+    SELECT 2,'Consignment Already Arrived'                                                   
+                                             
+ END                                     
+ ELSE                                  
+ BEGIN                                   
+     UPDATE S_TRACKBOOKINGCONS                           
+     SET  TrackBookingCons_Status='A', TrackBookingCons_UserId=@UserID ,TrackBookingCons_Date=GETDATE()                       
+     WHERE TrackBookingCons_Status='F'                           
+       AND TrackBookingCons_ConsNo=@BookingCons_ConsNo                                   
+                               
+     INSERT INTO s_TrackHist ( TrackHist_ConsID,  TrackHist_BranchID,TrackHist_StatusID,TrackHist_Date,TrackHist_UserID)                                   
+     SELECT BookingCons_kid,@BookingCons_BrnCode,2, GETDATE() ,@UserID                          
+     FROM s_BookingCons,s_brn                          
+     WHERE BookingCons_ConsNo =@BookingCons_ConsNo                           
+                                
+                                 
+     SELECT 3,'Approved'       
+    END                         
+  END                                                                       
+END                          
+                                    
+ ELSE IF @Mode='3' -- TRACK CONSIGNEMENT DETAILS                                                  
+ BEGIN                                           
+                         
+   SELECT BookingCons_ConsNo ,brn_Ename,Concat((Select brn_Ename  from s_brn where brn_brcod=BookingCons_DestBrn),'(',                        
+  (Select brn_brcod from s_brn where brn_brcod=BookingCons_DestBrn),')')                        
+   as DestinationBr , BookingCons_Destination,                                     
+   CASE WHEN BookingCons_DocType = 'Y' THEN 'YES' ELSE 'NO' END as  DocType,                                    
+   CONVERT(VARCHAR(10),BookingCons_BookingDate,103) as 'BookingDate'                                    
+  FROM s_BookingCons                                    
+  INNER JOIN s_brn on brn_brcod = bookingCons_brnCode                                    
+  WHERE BookingCons_ConsNo = @BookingCons_ConsNo                                   
+                              
+                                                  
+    SELECT  case when TrackBookingCons_Status='A' then 'Packet was dispatched from ' + (select brn_ename from s_brn where TrackBookingCons_brncode=brn_brcod )                              
+    + ', and arrived at ' + (select brn_ename from s_brn where TrackBookingCons_FwdBrnCode=brn_brcod )                               
+      when TrackBookingCons_Status='F' then 'Packet is dispatched from ' + (select brn_ename from s_brn where TrackBookingCons_brncode=brn_brcod )                       
+      when TrackBookingCons_Status='D' then 'Packet out of delivery from '+(select brn_ename from s_brn where brn_brcod=BookingCons_DestBrn) +' to '                      
+      +(Select BookingCons_Destination from  s_bookingcons where BookingCons_ConsNo=@BookingCons_ConsNo )                      
+      when TrackBookingCons_Status='C' then 'Packet Delivered at '+(select  BookingCons_Destination  from  s_BookingCons where BookingCons_ConsNo =TrackBookingCons_ConsNo)                      
+      when TrackBookingCons_Status='R' then 'Packet return from '+ (select brn_ename from s_brn where brn_brcod=BookingCons_DestBrn)                      
+      END  as 'Desc' ,                              
+ CONVERT(VARCHAR(20),TrackBookingCons_date,109) as 'Date'  FROM s_TrackBookingCons            
+  INNER JOIN s_BookingCons ON BookingCons_ConsNo =TrackBookingCons_ConsNo                              
+  WHERE BookingCons_ConsNo = @BookingCons_ConsNo                           
+  ORDER BY  s_TrackBookingCons.TrackBookingCons_kid                              
+                                                                      
+                    
+                                                    
+ END                                 
+                             
+ ELSE IF @Mode='4' --DELIVERY CONSIGNEMENT                              
+ BEGIN                            
+                          
+  IF @BookingCons_Status='INCOMING'                                  
+  BEGIN                           
+ SELECT BookingCons_ConsNo,(select brn_ename from s_brn where TrackBookingCons_brncode=brn_brcod ) as Source,BookingCons_Destination,BookingCons_DocType,BookingCons_Weight,BookingCons_Dimensions                           
+   INTO #temp FROM s_BookingCons  INNER JOIN s_TrackBookingCons ON                           
+   BookingCons_DestBrn=TrackBookingCons_FwdBrnCode              
+    where BookingCons_ConsNo=TrackBookingCons_ConsNo and TrackBookingCons_Status not in('C','D','F','R') and                          
+   TrackBookingCons_FwdBrnCode=@BookingCons_DestBrn                            
+ delete from #temp where BookingCons_ConsNo IN(select TrackBookingCons_ConsNo from  s_TrackBookingCons            
+  where TrackBookingCons_Status IN('C','D','F','R') and TrackBookingCons_FwdBrnCode IS NULL AND TrackBookingCons_BrnCode=@BookingCons_DestBrn)               
+                  
+    select * from #temp                
+         END                          
+     ELSE IF @BookingCons_Status='OUTGOING'                           
+     BEGIN                          
+                             
+   Select deliveryDtl_consNo,deliveryDtl_reason from s_deliveryDtl INNER JOIN s_TrackBookingCons ON                      
+  deliveryDtl_consNo=TrackBookingCons_ConsNo where TrackBookingCons_Status='R'                    
+                        
+     END                              
+                                                    
+ END                               
+-- ELSE IF @Mode=1                                                    
+-- BEGIN                                                    
+ -- SELECT 2                                                    
+-- END                                                    
+                                                     
+END }
